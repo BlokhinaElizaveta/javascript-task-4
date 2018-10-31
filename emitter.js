@@ -11,6 +11,8 @@ const isStar = true;
  * @returns {Object}
  */
 function getEmitter() {
+    let events = new Map();
+
     return {
 
         /**
@@ -18,26 +20,50 @@ function getEmitter() {
          * @param {String} event
          * @param {Object} context
          * @param {Function} handler
+         * @param {Object} params
+         * @returns {Object}
          */
-        on: function (event, context, handler) {
-            console.info(event, context, handler);
+        on: function (event, context, handler, params = { times: Infinity, frequency: 1 }) {
+            if (!events.has(event)) {
+                events.set(event, []);
+            }
+            events.get(event).push({ context, handler, times: params.times,
+                frequency: params.frequency, count: 0 });
+
+            return this;
         },
 
         /**
          * Отписаться от события
          * @param {String} event
          * @param {Object} context
+         * @returns {Object}
          */
         off: function (event, context) {
-            console.info(event, context);
+            let names = [...events.keys()].filter(e => e.startsWith(`${event}.`));
+            names.push(event);
+            for (const name of names) {
+                events.set(name, events.get(name).filter(e => e.context !== context));
+            }
+
+            return this;
         },
 
         /**
          * Уведомить о событии
          * @param {String} event
+         * @returns {Object}
          */
         emit: function (event) {
-            console.info(event);
+            let names = getEventNamesForEmit(event);
+            for (const name of names) {
+                let subscriptions = events.get(name);
+                if (subscriptions) {
+                    subscriptions.forEach(execute);
+                }
+            }
+
+            return this;
         },
 
         /**
@@ -47,9 +73,12 @@ function getEmitter() {
          * @param {Object} context
          * @param {Function} handler
          * @param {Number} times – сколько раз получить уведомление
+         * @returns {Object}
          */
         several: function (event, context, handler, times) {
-            console.info(event, context, handler, times);
+            this.on(event, context, handler, { times, frequency: 1 });
+
+            return this;
         },
 
         /**
@@ -59,11 +88,40 @@ function getEmitter() {
          * @param {Object} context
          * @param {Function} handler
          * @param {Number} frequency – как часто уведомлять
+         * @returns {Object}
          */
         through: function (event, context, handler, frequency) {
-            console.info(event, context, handler, frequency);
+            this.on(event, context, handler, { times: Infinity, frequency });
+
+            return this;
         }
     };
+}
+
+function getEventNamesForEmit(event) {
+    let index = event.lastIndexOf('.');
+    let names = [event];
+    while (index !== -1) {
+        names.push(event.slice(0, index));
+        index = event.lastIndexOf('.', index - 1);
+    }
+
+    return names;
+}
+
+function execute(subscription) {
+    if (subscription.count >= subscription.times) {
+        return;
+    }
+
+    if (subscription.count % subscription.frequency !== 0 && subscription.frequency !== 1) {
+        subscription.count++;
+
+        return;
+    }
+
+    subscription.handler.call(subscription.context);
+    subscription.count++;
 }
 
 module.exports = {
@@ -71,3 +129,4 @@ module.exports = {
 
     isStar
 };
+
