@@ -76,6 +76,9 @@ function getEmitter() {
          * @returns {Object}
          */
         several: function (event, context, handler, times) {
+            if (times <= 0) {
+                times = Infinity;
+            }
             this.on(event, context, handler, { times, frequency: 1 });
 
             return this;
@@ -91,6 +94,9 @@ function getEmitter() {
          * @returns {Object}
          */
         through: function (event, context, handler, frequency) {
+            if (frequency <= 0) {
+                frequency = 1;
+            }
             this.on(event, context, handler, { times: Infinity, frequency });
 
             return this;
