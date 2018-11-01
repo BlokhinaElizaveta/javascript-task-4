@@ -41,7 +41,9 @@ function getEmitter() {
          */
         off: function (event, context) {
             let names = [...events.keys()].filter(e => e.startsWith(`${event}.`));
-            names.push(event);
+            if (events.has(event)) {
+                names.push(event);
+            }
             for (const name of names) {
                 events.set(name, events.get(name).filter(e => e.context !== context));
             }
@@ -116,11 +118,8 @@ function getEventNamesForEmit(event) {
 }
 
 function execute(subscription) {
-    if (subscription.count >= subscription.times) {
-        return;
-    }
-
-    if (subscription.count % subscription.frequency !== 0 && subscription.frequency !== 1) {
+    if (subscription.count >= subscription.times ||
+        subscription.count % subscription.frequency !== 0) {
         subscription.count++;
 
         return;
